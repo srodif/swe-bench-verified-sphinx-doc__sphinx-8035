@@ -12,7 +12,12 @@ from os import path
 from pprint import pformat
 from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
 
-from jinja2 import FileSystemLoader, BaseLoader, TemplateNotFound, contextfunction
+from jinja2 import FileSystemLoader, BaseLoader, TemplateNotFound
+try:
+    from jinja2 import contextfunction
+except ImportError:
+    # Jinja2 3.0+ replaced contextfunction with pass_context
+    from jinja2 import pass_context as contextfunction
 from jinja2.environment import Environment
 from jinja2.sandbox import SandboxedEnvironment
 from jinja2.utils import open_if_exists
