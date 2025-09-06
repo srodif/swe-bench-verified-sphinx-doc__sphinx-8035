@@ -80,6 +80,13 @@ def members_option(arg: Any) -> Union[object, List[str]]:
     return [x.strip() for x in arg.split(',') if x.strip()]
 
 
+def private_members_option(arg: Any) -> Union[bool, List[str]]:
+    """Used to convert the :private-members: option to auto directives."""
+    if arg is None or arg is True:
+        return True
+    return [x.strip() for x in arg.split(',') if x.strip()]
+
+
 def members_set_option(arg: Any) -> Union[object, Set[str]]:
     """Used to convert the :members: option to auto directives."""
     if arg is None:
@@ -134,6 +141,29 @@ def merge_special_members_option(options: Dict) -> None:
                     options['members'].append(member)
         else:
             options['members'] = options['special-members']
+
+
+def should_include_private_member(options: Any, membername: str) -> bool:
+    """Check if a private member should be included based on private-members option.
+    
+    Returns True if the member should be included, False otherwise.
+    """
+    private_members = getattr(options, 'private_members', False)
+    
+    # If private_members is False/None, don't include any private members
+    if not private_members:
+        return False
+    
+    # If private_members is True (boolean), include all private members
+    if private_members is True:
+        return True
+        
+    # If private_members is a list, check if the member is in the list
+    if isinstance(private_members, list):
+        return membername in private_members
+    
+    # Default to False if we don't understand the option type
+    return False
 
 
 # Some useful event listener factories for autodoc-process-docstring.
@@ -649,14 +679,14 @@ class Documenter:
             elif (namespace, membername) in attr_docs:
                 if want_all and isprivate:
                     # ignore members whose name starts with _ by default
-                    keep = self.options.private_members
+                    keep = should_include_private_member(self.options, membername)
                 else:
                     # keep documented attributes
                     keep = True
                 isattr = True
             elif want_all and isprivate:
                 # ignore members whose name starts with _ by default
-                keep = self.options.private_members and \
+                keep = should_include_private_member(self.options, membername) and \
                     (has_doc or self.options.undoc_members)
             else:
                 if self.options.members is ALL and is_filtered_inherited_member(membername):
@@ -859,7 +889,7 @@ class ModuleDocumenter(Documenter):
         'show-inheritance': bool_option, 'synopsis': identity,
         'platform': identity, 'deprecated': bool_option,
         'member-order': member_order_option, 'exclude-members': members_set_option,
-        'private-members': bool_option, 'special-members': members_option,
+        'private-members': private_members_option, 'special-members': members_option,
         'imported-members': bool_option, 'ignore-module-all': bool_option
     }  # type: Dict[str, Callable]
 
@@ -1279,7 +1309,7 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type: 
         'noindex': bool_option, 'inherited-members': inherited_members_option,
         'show-inheritance': bool_option, 'member-order': member_order_option,
         'exclude-members': members_set_option,
-        'private-members': bool_option, 'special-members': members_option,
+        'private-members': private_members_option, 'special-members': members_option,
     }  # type: Dict[str, Callable]
 
     _signature_class = None  # type: Any
